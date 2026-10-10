@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>KI-gestützte Qualitätskontrolle für Glasbauteile</h1>
+<p class="lead">Wählen Sie eine Ansicht.</p>
+
+<div class="cards">
+  <a class="card" href="/station">
+    <h2>Prüfstation</h2>
+    <p>Teile laufen ein, die KI markiert Fehler. Auffällige Teile bestätigen oder korrigieren.</p>
+    <span class="meta">{{ station_name }}</span>
+  </a>
+  <a class="card" href="/dashboard">
+    <h2>Dashboard</h2>
+    <p>Prüfmenge, Fehlerquote über Zeit und Fehlertypen – gefiltert nach Zeitraum und Linie.</p>
+    <span class="meta">Übersicht Geschäftsführung</span>
+  </a>
+</div>
+{% endblock %}

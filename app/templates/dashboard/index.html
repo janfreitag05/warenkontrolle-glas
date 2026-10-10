@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard – {{ app_title }}{% endblock %}
+
+{% block content %}
+<div id="dashboard">
+  <div class="station-head">
+    <div>
+      <h1>Qualitäts-Dashboard</h1>
+      <p class="muted">{{ start | date_de }} – {{ end | date_de }} · {{ line_name }}</p>
+    </div>
+  </div>
+
+  <form class="filters" method="get" action="/dashboard" id="dashboard-filters">
+    <label>Zeitraum
+      <select name="period" id="period">
+        {% for key, label in periods.items() %}
+        <option value="{{ key }}" {% if period == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="custom-range">von
+      <input type="date" name="date_from" value="{{ start.isoformat() }}">
+    </label>
+    <label class="custom-range">bis
+      <input type="date" name="date_to" value="{{ end.isoformat() }}">
+    </label>
+    <label>Linie
+      <select name="line">
+        <option value="">Alle Linien</option>
+        {% for code, name in lines %}
+        <option value="{{ code }}" {% if line == code %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="by_line" value="1" {% if by_line %}checked{% endif %} {% if line %}disabled{% endif %}>
+      Fehlerquote je Linie
+    </label>
+    <button type="submit" class="btn btn-primary">Anwenden</button>
+  </form>
+
+  {% set k = kpis %}
+  <dl class="kpis">
+    <div class="kpi">
+      <dt>Geprüfte Teile</dt>
+      <dd>{{ k.inspected | int_de }}</dd>
+      <p class="kpi-note">im Zeitraum von der KI geprüft</p>
+    </div>
+    <div class="kpi">
+      <dt>Prüfabdeckung</dt>
+      <dd>{{ k.coverage | pct_de(0) }}</dd>
+      <p class="kpi-note">{{ k.produced_inspected | int_de }} von {{ k.produced | int_de }} eingelaufenen Teilen geprüft</p>
+    </div>
+    <div class="kpi">
+      <dt>Fehlerhafte Teile</dt>
+      <dd>{{ k.nok | int_de }}</dd>
+      <p class="kpi-note">Endurteil NOK, bei offenen Prüfungen das KI-Urteil</p>
+      {% if k.provisional %}<p class="kpi-note kpi-warn">vorläufig: {{ k.open_nok | int_de }} davon noch nicht bestätigt</p>{% endif %}
+    </div>
+    <div class="kpi kpi-main">
+      <dt>Fehlerquote</dt>
+      <dd>{{ k.defect_rate | pct_de }}{% if k.provisional %} <span class="provisional-tag">vorläufig</span>{% endif %}</dd>
+      <p class="kpi-note">NOK von {{ k.rated | int_de }} Prüfungen mit Urteil</p>
+      {% if k.provisional %}<p class="kpi-note kpi-warn">{{ k.open | int_de }} Prüfungen offen, gezählt mit KI-Urteil{% if k.open_manual %} (unsichere ohne Urteil){% endif %}</p>{% endif %}
+    </div>
+    <div class="kpi">
+      <dt>Offene manuelle Prüfungen</dt>
+      <dd>{{ k.open | int_de }}</dd>
+      <p class="kpi-note">warten auf Prüfer: {{ k.open_nok | int_de }} NOK, {{ k.open_manual | int_de }} unsicher</p>
+    </div>
+    <div class="kpi">
+      <dt>KI-Korrekturquote</dt>
+      <dd>{{ k.correction_rate | pct_de }}</dd>
+      <p class="kpi-note">{{ k.ai_nok_corrected | int_de }} von {{ k.ai_nok_reviewed | int_de }} überprüften NOK-Urteilen auf OK geändert</p>
+    </div>
+  </dl>
+
+  <div class="charts">
+    <section class="chart-card">
+      <h2>Fehlerquote pro Tag</h2>
+      <p class="muted small">Endurteil NOK / Prüfungen mit Urteil{% if by_line %}, gesamt und je Linie{% endif %}. Gestrichelt und hohl: vorläufig, offene Prüfungen mit KI-Urteil gezählt.</p>
+      <div class="chart-box"><canvas id="trend-chart" role="img" aria-label="Fehlerquote pro Tag"></canvas></div>
+      <details class="chart-table">
+        <summary>Daten als Tabelle</summary>
+        <table>
+          <thead><tr><th>Tag</th><th>Gesamt</th>{% for code in chart.lines %}<th>{{ code }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for day in chart.days %}
+            {% set i = loop.index0 %}
+            <tr>
+              <td>{{ day }}</td>
+              <td>{{ chart.total.rate[i] | pct_de }}{% if chart.total.provisional[i] %} (vorläufig){% endif %}</td>
+              {% for code, values in chart.lines.items() %}<td>{{ values.rate[i] | pct_de }}{% if values.provisional[i] %} (vorläufig){% endif %}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </section>
+
+    <section class="chart-card">
+      <h2>Fehlertypen</h2>
+      <p class="muted small">Teile je Fehlertyp nach Korrekturen der Prüfer, abgeschlossene Prüfungen</p>
+      <div class="chart-box"><canvas id="types-chart" role="img" aria-label="Fehlertypen"></canvas></div>
+      <details class="chart-table">
+        <summary>Daten als Tabelle</summary>
+        <table>
+          <thead><tr><th>Fehlertyp</th><th>Teile</th></tr></thead>
+          <tbody>
+            {% for item in chart.defects %}<tr><td>{{ item.label }}</td><td>{{ item.count | int_de }}</td></tr>{% endfor %}
+            {% for item in chart.filtered %}<tr><td>{{ item.label }} (gefiltert, kein Fehler)</td><td>{{ item.count | int_de }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </details>
+    </section>
+  </div>
+
+  <script id="chart-data" type="application/json">{{ chart | tojson }}</script>
+</div>
+
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

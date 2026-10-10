@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}{{ d.serial }} – {{ app_title }}{% endblock %}
+
+{% block content %}
+<div id="station" class="inspection-page">
+  <div class="station-head">
+    <div>
+      <h1>{{ d.serial }}</h1>
+      <p class="muted">{{ d.line_name }} · Charge {{ d.batch }} · geprüft {{ d.inspected_at | datetime_de }}</p>
+    </div>
+    <a class="btn" href="{{ back_url }}">Zurück zur Historie</a>
+  </div>
+
+  <div class="detail">
+    <div class="detail-grid">
+      <div>
+        <div class="figure">
+          <img src="/api/station/inspections/{{ d.id }}/image" alt="Aufnahme von Teil {{ d.serial }}">
+          <svg class="overlay" viewBox="0 0 {{ image_width }} {{ image_height }}" preserveAspectRatio="none" aria-hidden="true">
+            {% for det in d.detections %}
+            <g class="mark sev-{{ det.severity }}{% if not det.certain %} uncertain{% endif %}">
+              <rect x="{{ det.x }}" y="{{ det.y }}" width="{{ det.w }}" height="{{ det.h }}" rx="3"></rect>
+              <text x="{{ det.x }}" y="{{ [det.y - 6, 14] | max }}">{{ loop.index }} {{ det.type_name }}{% if not det.is_defect %} – kein Fehler{% endif %}</text>
+            </g>
+            {% endfor %}
+          </svg>
+        </div>
+      </div>
+
+      <div class="compare">
+        <section class="compare-box">
+          <h2>KI-Ergebnis</h2>
+          <div class="verdict-big verdict-{{ d.ai_verdict }}"><small>KI-Urteil</small>{{ verdicts[d.ai_verdict] }}</div>
+          <p class="reason">{{ d.ai_reason }}</p>
+          {% if d.detections %}
+          <table class="detections">
+            <thead><tr><th>#</th><th>Typ</th><th>Schweregrad</th><th>Länge</th><th>Konfidenz</th></tr></thead>
+            <tbody>
+              {% for det in d.detections %}
+              <tr class="{% if not det.certain %}row-uncertain{% endif %}">
+                <td>{{ loop.index }}</td>
+                <td><span class="sev-dot sev-{{ det.severity }}"></span>{{ det.type_name }}</td>
+                <td>{{ det.severity_name if det.is_defect else "kein Fehler" }}</td>
+                <td>{% if det.length_mm is not none %}{{ det.length_mm | number_de }} mm{% else %}–{% endif %}</td>
+                <td>
+                  {{ det.confidence | number_de(2) }}
+                  {% if not det.certain %}<span class="small muted">(unter {{ confidence_min | number_de(2) }})</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="muted">Keine Erkennungen.</p>
+          {% endif %}
+        </section>
+
+        <section class="compare-box{% if d.review and d.review.decision == 'CORRECTED' %} box-corrected{% endif %}">
+          <h2>Review</h2>
+          {% if d.review %}
+          <p>
+            <strong>{{ decisions[d.review.decision] }}</strong> am {{ d.review.reviewed_at | datetime_de }}
+          </p>
+          <div class="verdict-big verdict-{{ d.review.final_verdict }}"><small>Endurteil</small>{{ d.review.final_verdict }}</div>
+          {% if changes %}
+          <table class="detections">
+            <thead><tr><th>Korrektur</th><th>Erkennung</th><th>Richtiger Typ</th></tr></thead>
+            <tbody>
+              {% for c in changes %}
+              <tr><td>{{ c.what }}</td><td>{{ c.target }}</td><td>{{ c.new_type or "–" }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+          {% if d.review.comment %}<p>Kommentar: {{ d.review.comment }}</p>{% endif %}
+          {% elif d.status == "AUTO_DONE" %}
+          <p class="muted">Keine Review: automatisch freigegeben.</p>
+          {% else %}
+          <p class="muted">Noch nicht bearbeitet. Das Teil wartet in „Zu prüfen“ an der Prüfstation.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

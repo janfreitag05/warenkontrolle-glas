@@ -1,0 +1,16 @@
+# Local Python environment (contains machine-specific paths)
+.venv/
+
+# Generated data: rebuild with tools.generate_images and tools.reset_demo (see README)
+data/
+
+# Caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

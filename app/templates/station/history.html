@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Historie – {{ app_title }}{% endblock %}
+
+{% block content %}
+<div id="station" class="history">
+  <div class="station-head">
+    <div>
+      <h1>Historie</h1>
+      <p class="muted">Alle Prüfungen, neueste zuerst. {{ total | string }} Treffer.</p>
+    </div>
+    <a class="btn" href="/station">Zurück zur Prüfstation</a>
+  </div>
+
+  <form class="filters" method="get" action="/station/history">
+    <label>Umfang
+      <select name="scope">
+        {% for value, label in scopes.items() %}
+        <option value="{{ value }}" {% if filters.scope == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Status
+      <select name="status">
+        <option value="">alle</option>
+        {% for value, label in statuses.items() %}
+        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Endurteil
+      <select name="final">
+        <option value="">alle</option>
+        {% for value, label in finals.items() %}
+        <option value="{{ value }}" {% if filters.final == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="corrected" value="1" {% if filters.corrected == "1" %}checked{% endif %}>
+      nur korrigierte
+    </label>
+    <button type="submit" class="btn btn-primary">Filtern</button>
+    <a class="small" href="/station/history">Filter zurücksetzen</a>
+  </form>
+
+  {% if rows %}
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Zeit</th><th>Seriennummer</th><th>Linie</th><th>Charge</th>
+        <th>KI-Urteil</th><th>Endurteil</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{% if r.decision == 'CORRECTED' %}row-corrected{% endif %}">
+        <td>{{ r.inspected_at | datetime_de }}</td>
+        <td><a href="/station/inspection/{{ r.id }}?back={{ back_query | urlencode }}">{{ r.serial }}</a></td>
+        <td>{{ r.line }}</td>
+        <td>{{ r.batch }}</td>
+        <td><span class="badge verdict-{{ r.ai_verdict }}">{{ verdicts[r.ai_verdict] }}</span></td>
+        <td>
+          {% if r.final_verdict %}<span class="badge verdict-{{ r.final_verdict }}">{{ r.final_verdict }}</span>
+          {% else %}<span class="muted">offen</span>{% endif %}
+        </td>
+        <td>
+          {{ statuses[r.status] }}
+          {% if r.decision == 'CORRECTED' %}<span class="badge badge-corrected">korrigiert</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <nav class="pager" aria-label="Seiten">
+    {% if page > 1 %}<a class="btn" href="{{ page_url(page - 1) }}">‹ Neuere</a>{% endif %}
+    <span>Seite {{ page }} von {{ pages }}</span>
+    {% if page < pages %}<a class="btn" href="{{ page_url(page + 1) }}">Ältere ›</a>{% endif %}
+  </nav>
+  {% else %}
+  <p class="notice">Keine Prüfungen für diese Filter.</p>
+  {% endif %}
+</div>
+{% endblock %}

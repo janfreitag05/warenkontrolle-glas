@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Prüfstation – {{ app_title }}{% endblock %}
+
+{% block content %}
+<div id="station">
+  <script id="station-config" type="application/json">{{ station_config | tojson }}</script>
+
+  <div class="station-head">
+    <div>
+      <h1>Prüfstation</h1>
+      <p class="muted">{{ station_name }} · Sie prüfen nur auffällige Teile, OK-Teile laufen automatisch durch.</p>
+    </div>
+    <div class="head-side">
+      <p id="infeed-status" class="infeed-status" aria-live="polite">
+        <span class="infeed-dot"></span>
+        <span id="infeed-text">Teile laufen ein (alle {{ interval_label }} s)</span>
+      </p>
+      <a class="btn" href="/station/history">Historie</a>
+    </div>
+  </div>
+
+  <dl class="counters" id="counters"></dl>
+
+  <p id="done-hint" class="notice notice-success" hidden>Alle Teile geprüft.</p>
+  <p id="error-hint" class="notice notice-error" hidden></p>
+
+  <div class="station-grid">
+    <aside class="queue">
+      <h2>Zu prüfen <span id="queue-count" class="pill">0</span></h2>
+      <ol id="queue" class="queue-list"></ol>
+      <p id="queue-empty" class="muted">Keine offenen Teile.</p>
+    </aside>
+
+    <section id="detail" class="detail">
+      <p class="muted">Noch kein auffälliges Teil. Die Teile laufen automatisch ein.</p>
+    </section>
+  </div>
+
+  <dialog id="correct-dialog" class="dialog">
+    <form id="correct-form" method="dialog">
+      <h2>Einstufung korrigieren <span id="correct-serial" class="muted"></span></h2>
+
+      <fieldset>
+        <legend>Endurteil</legend>
+        <label class="radio"><input type="radio" name="final_verdict" value="OK"> OK – Teil ist in Ordnung</label>
+        <label class="radio"><input type="radio" name="final_verdict" value="NOK"> NOK – Teil wird aussortiert</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Erkennungen der KI</legend>
+        <table class="correct-table">
+          <thead><tr><th>Erkannt</th><th>Ihre Einschätzung</th><th>Richtiger Typ</th></tr></thead>
+          <tbody id="correct-detections"></tbody>
+        </table>
+        <p id="correct-no-detections" class="muted" hidden>Die KI hat keine Auffälligkeiten erkannt.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Fehler übersehen</legend>
+        <div id="missed-list"></div>
+        <button type="button" id="btn-add-missed" class="btn">+ Übersehenen Fehler hinzufügen</button>
+      </fieldset>
+
+      <label class="block">
+        Kommentar (optional)
+        <textarea id="correct-comment" rows="3"></textarea>
+      </label>
+
+      <p id="correct-error" class="notice notice-error" hidden></p>
+
+      <div class="dialog-actions">
+        <button type="button" id="btn-cancel" class="btn">Abbrechen</button>
+        <button type="submit" id="btn-save-correction" class="btn btn-primary">Korrektur speichern</button>
+      </div>
+    </form>
+  </dialog>
+</div>
+
+<script src="{{ url_for('static', path='js/station.js') }}"></script>
+{% endblock %}
